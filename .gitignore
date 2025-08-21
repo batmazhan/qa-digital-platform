@@ -1,10 +1,24 @@
+# Node
 node_modules/
-.next/
-out/
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/.turbo/
 frontend/cypress/videos/
 frontend/cypress/screenshots/
+
+# Composer / PHP
 vendor/
-web/sites/*/files/
-web/sites/*/settings.local.php
+
+# Drupal runtime caches & uploaded files
+backend/web/sites/*/files/
+backend/web/sites/*/private/
+backend/web/sites/default/files/
+backend/web/sites/default/files/php/
+
+# Cypress cache
+.cypress-cache/
+
+# OS/editor
 .DS_Store
-*.swp
+*.log
