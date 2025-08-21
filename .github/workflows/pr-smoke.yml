@@ -1,0 +1,86 @@
+name: PR Smoke
+on:
+  pull_request:
+    branches: [ "**" ]
+
+env:
+  COMPOSE_PROJECT_NAME: qa   # makes network name qa_default
+
+jobs:
+  pr-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack (Drupal + DB + Next.js)
+        run: docker compose up -d
+
+      - name: Health checks
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            curl -sf http://localhost:8080/jsonapi/node/article && break
+            echo "Waiting for Drupal... ($i)"; sleep 2
+          done
+          for i in {1..60}; do
+            curl -sf http://localhost:3001 && break
+            echo "Waiting for Frontend... ($i)"; sleep 2
+          done
+
+      - name: PHPUnit (inside Drupal container)
+        run: |
+          docker compose exec -T drupal \
+            /opt/phpunit.phar /var/www/html/modules/custom/example/tests/unit
+
+      - name: Behat (black-box JSON:API)
+        run: |
+          docker compose exec -T drupal \
+            vendor/bin/behat -f progress
+
+      - name: Detect Cypress project root + spec
+        id: detect
+        shell: bash
+        run: |
+          if [ -f frontend/cypress/e2e/homepage.cy.js ]; then
+            echo "mount=frontend" >> "$GITHUB_OUTPUT"
+            echo "spec=cypress/e2e/homepage.cy.js" >> "$GITHUB_OUTPUT"
+          elif [ -f cypress/e2e/homepage.cy.js ]; then
+            echo "mount=." >> "$GITHUB_OUTPUT"
+            echo "spec=cypress/e2e/homepage.cy.js" >> "$GITHUB_OUTPUT"
+          else
+            # fallback to frontend; adjust spec here if you name it differently
+            echo "mount=frontend" >> "$GITHUB_OUTPUT"
+            echo "spec=cypress/e2e/homepage.cy.js" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cypress smoke (official runner image)
+        run: |
+          docker run --rm \
+            --network qa_default \
+            -e CYPRESS_baseUrl="http://frontend:3000" \
+            -v "$PWD/${{ steps.detect.outputs.mount }}":/e2e -w /e2e \
+            cypress/included:14.5.4 \
+            bash -lc 'npm ci --no-audit --no-fund || npm i; cypress run --headless --browser electron --spec "${{ steps.detect.outputs.spec }}"'
+
+      - name: Percy snapshots (optional)
+        if: env.PERCY_TOKEN != ''
+        env:
+          PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+        run: |
+          docker run --rm \
+            --network qa_default \
+            -e PERCY_TOKEN="$PERCY_TOKEN" \
+            -e CYPRESS_baseUrl="http://frontend:3000" \
+            -v "$PWD/${{ steps.detect.outputs.mount }}":/e2e -w /e2e \
+            cypress/included:14.5.4 \
+            bash -lc 'npm ci --no-audit --no-fund || npm i; npx percy exec -- cypress run --headless --browser electron --spec "${{ steps.detect.outputs.spec }}"'
+
+      - name: Upload Cypress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            **/cypress/videos/**
+            **/cypress/screenshots/**

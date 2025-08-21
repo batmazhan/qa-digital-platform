@@ -1,0 +1,9 @@
+{
+    "require-dev": {
+        "behat/behat": "^3.13",
+        "behat/mink": "^1.10",
+        "behat/mink-extension": "^2.6",
+        "drupal/drupal-extension": "^5",
+        "phpunit/phpunit": "^10"
+    }
+}

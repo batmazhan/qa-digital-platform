@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: qa-digital-platform
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata: { labels: { app: frontend } }
+    spec:
+      containers:
+        - name: next
+          image: ghcr.io/batmazhan/qa-frontend:v0.1.0
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - name: DRUPAL_INTERNAL_URL
+              valueFrom: { configMapKeyRef: { name: qa-config, key: DRUPAL_INTERNAL_URL } }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: qa-digital-platform
+spec:
+  selector: { app: frontend }
+  ports: [{ name: http, port: 3000, targetPort: http }]

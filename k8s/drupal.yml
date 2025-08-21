@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drupal
+  namespace: qa-digital-platform
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: drupal } }
+  template:
+    metadata: { labels: { app: drupal } }
+    spec:
+      containers:
+        - name: drupal
+          image: ghcr.io/batmazhan/qa-drupal:v0.1.0
+          ports: [{ name: http, containerPort: 80 }]
+          env:
+            - name: DB_HOST
+              valueFrom: { secretKeyRef: { name: qa-db-secret, key: DB_HOST } }
+            - name: DB_NAME
+              valueFrom: { secretKeyRef: { name: qa-db-secret, key: DB_NAME } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: qa-db-secret, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: qa-db-secret, key: DB_PASSWORD } }
+          readinessProbe:
+            httpGet: { path: /jsonapi, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drupal
+  namespace: qa-digital-platform
+spec:
+  selector: { app: drupal }
+  ports: [{ name: http, port: 80, targetPort: http }]

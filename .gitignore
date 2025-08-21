@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+frontend/cypress/videos/
+frontend/cypress/screenshots/
+vendor/
+web/sites/*/files/
+web/sites/*/settings.local.php
+.DS_Store
+*.swp
