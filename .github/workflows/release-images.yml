@@ -70,3 +70,36 @@ jobs:
           labels: ${{ steps.meta_be.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_fe.outputs.tags }}
+          labels: ${{ steps.meta_fe.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Drupal meta
+        id: meta_be
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/qa-drupal
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build & push drupal
+        uses: docker/build-push-action@v6
+        with:
+          context: .                 # repo root so it sees composer.json/lock
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_be.outputs.tags }}
+          labels: ${{ steps.meta_be.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
